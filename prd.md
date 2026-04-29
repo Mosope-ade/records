@@ -20,6 +20,7 @@
 * **Role-Based Access Control (RBAC):**
     * **Admin:** Full CRUD (Create, Read, Update, Delete) on all records. View total aggregate debt.
     * **Staff:** Can create debt entries, search records, and update payments. **Cannot delete or edit** historical entries once saved (prevents record tampering).
+    * the staff that creates or updates an entry will also be recorded as part of the entry for audit trail
 
 ### **B. Debt Ledger Module (Core)**
 * **Entry Schema:** `Customer Name`, `Total Debt Amount`, `Amount Paid`, `Balance` (auto-calculated), `Date/Time` (auto-stamped).

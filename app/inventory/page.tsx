@@ -10,6 +10,7 @@ interface InventoryItem {
   id: string;
   itemName: string;
   status: StockStatus;
+  reporterName: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -193,7 +194,7 @@ export default function InventoryPage() {
                   <StatusBadge status={item.status} />
                 </div>
                 <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 4 }}>
-                  Reported {timeAgo(item.createdAt)} · tap to update
+                  By {item.reporterName} • {timeAgo(item.createdAt)} · tap to update
                 </div>
               </div>
             ))}

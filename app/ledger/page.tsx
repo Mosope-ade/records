@@ -11,6 +11,8 @@ interface DebtEntry {
   amountPaid: string;
   balance: string;
   notes?: string;
+  createdBy: string;
+  creatorName: string;
   createdAt: string;
   updatedAt: string;
   payments: Payment[];
@@ -245,9 +247,9 @@ export default function LedgerPage() {
               <div key={e.id} className="entry-card" onClick={() => setSelected(e)}>
                 <div className="entry-card-top">
                   <span className="entry-name">{e.customerName}</span>
-                  <span className="entry-date">{timeAgo(e.createdAt)}</span>
+                  <span className="entry-date">{e.creatorName} • {timeAgo(e.createdAt)}</span>
                 </div>
-                {e.notes && <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: 6 }}>{e.notes}</p>}
+                {e.notes && <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: 8 }}>{e.notes}</p>}
                 <div className="entry-amounts">
                   <div className="amount-cell">
                     <div className="amount-label">Debt</div>
