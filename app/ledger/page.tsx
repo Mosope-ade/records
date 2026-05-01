@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 interface DebtEntry {
   id: string;
@@ -45,9 +43,8 @@ function AddDebtModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =
   const [total, setTotal] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
 
-  const submit = async (e: React.SubmitEvent) => {
+  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!name.trim() || !total) return;
     setLoading(true);
@@ -62,26 +59,28 @@ function AddDebtModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =
   };
 
   return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal" ref={ref}>
-        <div className="modal-handle" />
-        <h2 className="modal-title">New Debt Entry</h2>
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content">
+        <h2 style={{ marginBottom: '1.5rem' }}>New Debt Entry</h2>
         <form onSubmit={submit}>
-          <div className="form-group">
-            <label className="form-label">Customer Name</label>
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label className="ledger-amount-label">Customer Name</label>
             <input id="debt-name" className="form-input" placeholder="e.g. Iya Shola" value={name} onChange={e => setName(e.target.value)} required />
           </div>
-          <div className="form-group">
-            <label className="form-label">Total Debt (₦)</label>
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label className="ledger-amount-label">Total Debt (₦)</label>
             <input id="debt-amount" className="form-input" type="number" min="0" step="0.01" placeholder="5000.00" value={total} onChange={e => setTotal(e.target.value)} required />
           </div>
-          <div className="form-group">
-            <label className="form-label">Notes (optional)</label>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label className="ledger-amount-label">Notes (optional)</label>
             <textarea id="debt-notes" className="form-textarea" placeholder="Item purchased, etc." value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
-          <button id="debt-submit" className="btn btn-primary btn-full" type="submit" disabled={loading}>
-            {loading ? "Saving…" : "Save Entry"}
-          </button>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button className="btn btn-ghost" style={{ flex: 1 }} type="button" onClick={onClose}>Cancel</button>
+            <button id="debt-submit" className="btn btn-primary" style={{ flex: 2 }} type="submit" disabled={loading}>
+              {loading ? "Saving…" : "Save Entry"}
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -94,7 +93,7 @@ function PayModal({ entry, onClose, onSaved }: { entry: DebtEntry; onClose: () =
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const submit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!amount) return;
     setLoading(true);
@@ -111,58 +110,53 @@ function PayModal({ entry, onClose, onSaved }: { entry: DebtEntry; onClose: () =
   const pct = Math.min(100, (Number(entry.amountPaid) / Number(entry.totalDebt)) * 100);
 
   return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
-        <div className="modal-handle" />
-        <h2 className="modal-title">Record Payment</h2>
-        <div className="card card-highlight" style={{ marginBottom: "1.25rem" }}>
-          <div className="entry-name" style={{ marginBottom: 8 }}>{entry.customerName}</div>
-          <div className="entry-amounts">
-            <div className="amount-cell">
-              <div className="amount-label">Total</div>
-              <div className="amount-value purple">{fmt(entry.totalDebt)}</div>
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content">
+        <h2 style={{ marginBottom: '0.5rem' }}>Record Payment</h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>{entry.customerName}</p>
+        
+        <div className="card" style={{ marginBottom: "1.5rem", background: 'var(--primary-soft)', border: 'none' }}>
+          <div className="ledger-amounts">
+            <div className="ledger-amount-group">
+              <div className="ledger-amount-label">Balance Due</div>
+              <div className="ledger-amount-value" style={{ color: 'var(--danger)', fontSize: '1.25rem' }}>{fmt(entry.balance)}</div>
             </div>
-            <div className="amount-cell">
-              <div className="amount-label">Paid</div>
-              <div className="amount-value green">{fmt(entry.amountPaid)}</div>
+            <div className="ledger-amount-group">
+              <div className="ledger-amount-label">Paid</div>
+              <div className="ledger-amount-value" style={{ color: 'var(--success)' }}>{fmt(entry.amountPaid)}</div>
             </div>
-            <div className="amount-cell">
-              <div className="amount-label">Balance</div>
-              <div className="amount-value red">{fmt(entry.balance)}</div>
-            </div>
-          </div>
-          <div className="progress-bar" style={{ marginTop: 10 }}>
-            <div className="progress-fill" style={{ width: `${pct}%` }} />
           </div>
         </div>
 
         {entry.payments.length > 0 && (
-          <>
-            <h3 style={{ marginBottom: "0.5rem", color: "var(--text-secondary)" }}>Payment History</h3>
-            <div style={{ marginBottom: "1rem", maxHeight: 140, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--text-secondary)' }}>Payment History</h3>
+            <div style={{ maxHeight: 120, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px' }}>
               {entry.payments.map(p => (
-                <div key={p.id} style={{ background: "var(--bg)", borderRadius: 8, padding: "6px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ color: "var(--success)", fontWeight: 700, fontSize: "0.9rem" }}>+{fmt(p.amount)}</span>
-                  <span style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>{timeAgo(p.paidAt)}</span>
+                <div key={p.id} style={{ padding: '0.75rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                  <span className="text-success" style={{ fontWeight: 700 }}>+{fmt(p.amount)}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{timeAgo(p.paidAt)}</span>
                 </div>
               ))}
             </div>
-            <div className="divider" />
-          </>
+          </div>
         )}
 
         <form onSubmit={submit}>
-          <div className="form-group">
-            <label className="form-label">Amount Paid (₦)</label>
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label className="ledger-amount-label">Amount Paid (₦)</label>
             <input id="pay-amount" className="form-input" type="number" min="0.01" step="0.01" max={Number(entry.balance)} placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} required />
           </div>
-          <div className="form-group">
-            <label className="form-label">Note (optional)</label>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label className="ledger-amount-label">Note (optional)</label>
             <input id="pay-note" className="form-input" placeholder="e.g. part payment" value={note} onChange={e => setNote(e.target.value)} />
           </div>
-          <button id="pay-submit" className="btn btn-primary btn-full" type="submit" disabled={loading}>
-            {loading ? "Saving…" : "Record Payment"}
-          </button>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button className="btn btn-ghost" style={{ flex: 1 }} type="button" onClick={onClose}>Cancel</button>
+            <button id="pay-submit" className="btn btn-primary" style={{ flex: 2 }} type="submit" disabled={loading}>
+              {loading ? "Saving…" : "Record Payment"}
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -171,7 +165,6 @@ function PayModal({ entry, onClose, onSaved }: { entry: DebtEntry; onClose: () =
 
 // ─── Ledger Page ─────────────────────────────────────────────────────────────
 export default function LedgerPage() {
-  const pathname = usePathname();
   const [entries, setEntries] = useState<DebtEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -197,75 +190,92 @@ export default function LedgerPage() {
   return (
     <>
       <main className="page">
-        <div className="page-header">
+        <header className="page-header">
           <div>
             <h1>Ledger</h1>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.8rem", marginTop: 2 }}>Debt records</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>Track customer debts and payments</p>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Total Owed</div>
-            <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--danger)" }}>{fmt(totalBalance)}</div>
+            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase" }}>Total Outstanding</div>
+            <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--danger)" }}>{fmt(totalBalance)}</div>
           </div>
-        </div>
+        </header>
 
-        <div className="stat-row">
-          <div className="stat-pill">
-            <div className="label">Entries</div>
+        <section className="stat-grid">
+          <div className="stat-card">
+            <div className="label">Total Entries</div>
             <div className="value">{entries.length}</div>
           </div>
-          <div className="stat-pill">
+          <div className="stat-card">
             <div className="label">Outstanding</div>
-            <div className="value" style={{ color: "var(--warning)" }}>{outstanding}</div>
+            <div className="value text-warning">{outstanding}</div>
           </div>
-          <div className="stat-pill">
+          <div className="stat-card">
             <div className="label">Cleared</div>
-            <div className="value" style={{ color: "var(--success)" }}>{entries.length - outstanding}</div>
+            <div className="value text-success">{entries.length - outstanding}</div>
           </div>
-        </div>
+        </section>
 
-        <div className="search-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx={11} cy={11} r={8}/><path d="m21 21-4.35-4.35"/></svg>
-          <input id="ledger-search" className="search-input" placeholder="Search by name…" value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-
-        <div className="filter-row">
-          <input id="ledger-date" type="date" className="form-input filter-date" value={date} onChange={e => setDate(e.target.value)} style={{ fontSize: "0.85rem" }} />
-          {date && <button className="btn btn-ghost btn-sm" onClick={() => setDate("")}>Clear</button>}
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+          <div style={{ flex: 2, position: 'relative', minWidth: '200px' }}>
+            <input 
+              id="ledger-search" 
+              className="form-input" 
+              placeholder="Search by customer name..." 
+              value={search} 
+              onChange={e => setSearch(e.target.value)}
+              style={{ paddingLeft: '2.5rem' }}
+            />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', width: '1.2rem', color: 'var(--text-muted)' }}><circle cx={11} cy={11} r={8}/><path d="m21 21-4.35-4.35"/></svg>
+          </div>
+          <input 
+            id="ledger-date" 
+            type="date" 
+            className="form-input" 
+            value={date} 
+            onChange={e => setDate(e.target.value)} 
+            style={{ flex: 1, minWidth: '150px' }} 
+          />
+          {date && <button className="btn btn-ghost" onClick={() => setDate("")}>Reset</button>}
         </div>
 
         {loading ? (
-          Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton skeleton-card" />)
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {[1,2,3,4].map(i => <div key={i} className="card" style={{ height: '80px', opacity: 0.5 }}>Loading...</div>)}
+          </div>
         ) : entries.length === 0 ? (
-          <div className="empty-state">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'white', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📒</div>
             <h3>No entries found</h3>
-            <p style={{ fontSize: "0.85rem" }}>Tap + to add the first debt entry</p>
+            <p style={{ color: 'var(--text-muted)' }}>Tap the + button to record a new debt.</p>
           </div>
         ) : (
-          <div className="entry-list">
+          <div className="ledger-container">
+            <div className="ledger-header">
+              <div>Customer</div>
+              <div>Debt Status</div>
+              <div>Action</div>
+            </div>
             {entries.map(e => (
-              <div key={e.id} className="entry-card" onClick={() => setSelected(e)}>
-                <div className="entry-card-top">
-                  <span className="entry-name">{e.customerName}</span>
-                  <span className="entry-date">{e.creatorName} • {timeAgo(e.createdAt)}</span>
+              <div key={e.id} className="ledger-row" onClick={() => setSelected(e)}>
+                <div>
+                  <div className="ledger-name">{e.customerName}</div>
+                  <div className="ledger-meta">{e.creatorName} • {timeAgo(e.createdAt)}</div>
                 </div>
-                {e.notes && <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: 8 }}>{e.notes}</p>}
-                <div className="entry-amounts">
-                  <div className="amount-cell">
-                    <div className="amount-label">Debt</div>
-                    <div className="amount-value purple">{fmt(e.totalDebt)}</div>
+                <div className="ledger-amounts">
+                  <div className="ledger-amount-group">
+                    <div className="ledger-amount-label">Debt</div>
+                    <div className="ledger-amount-value">{fmt(e.totalDebt)}</div>
                   </div>
-                  <div className="amount-cell">
-                    <div className="amount-label">Paid</div>
-                    <div className="amount-value green">{fmt(e.amountPaid)}</div>
-                  </div>
-                  <div className="amount-cell">
-                    <div className="amount-label">Balance</div>
-                    <div className="amount-value red">{fmt(e.balance)}</div>
+                  <div className="ledger-amount-group">
+                    <div className="ledger-amount-label">Balance</div>
+                    <div className="ledger-amount-value" style={{ color: Number(e.balance) > 0 ? 'var(--danger)' : 'var(--success)' }}>{fmt(e.balance)}</div>
                   </div>
                 </div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${Math.min(100, (Number(e.amountPaid)/Number(e.totalDebt))*100)}%` }} />
+                <div style={{ textAlign: 'right' }}>
+                  <button className="btn btn-primary btn-sm" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                    {Number(e.balance) > 0 ? "Record Pay" : "View Details"}
+                  </button>
                 </div>
               </div>
             ))}
@@ -273,32 +283,12 @@ export default function LedgerPage() {
         )}
       </main>
 
-      {/* FAB */}
-      <button id="ledger-fab" className="fab" onClick={() => setShowAdd(true)} aria-label="New debt entry">+</button>
+      <button id="ledger-fab" className="fab" onClick={() => setShowAdd(true)} aria-label="New debt entry">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} style={{ width: 28, height: 28 }}><path d="M12 5v14M5 12h14"/></svg>
+      </button>
 
       {showAdd && <AddDebtModal onClose={() => setShowAdd(false)} onSaved={load} />}
       {selected && <PayModal entry={selected} onClose={() => setSelected(null)} onSaved={load} />}
-
-      <BottomNav pathname={pathname} />
     </>
-  );
-}
-
-function BottomNav({ pathname }: { pathname: string }) {
-  return (
-    <nav className="bottom-nav">
-      <Link href="/ledger"    className={`nav-item ${pathname === "/ledger"    ? "active" : ""}`}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        Ledger
-      </Link>
-      <Link href="/inventory" className={`nav-item ${pathname === "/inventory" ? "active" : ""}`}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-        Inventory
-      </Link>
-      <Link href="/profile"   className={`nav-item ${pathname === "/profile"   ? "active" : ""}`}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Profile
-      </Link>
-    </nav>
   );
 }

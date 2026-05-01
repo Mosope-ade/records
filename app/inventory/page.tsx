@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 type StockStatus = "LOW_STOCK" | "OUT_OF_STOCK" | "RESTOCKED";
 
@@ -16,9 +14,9 @@ interface InventoryItem {
 }
 
 function StatusBadge({ status }: { status: StockStatus }) {
-  if (status === "LOW_STOCK")   return <span className="badge badge-low">Low Stock</span>;
-  if (status === "OUT_OF_STOCK") return <span className="badge badge-out">Out of Stock</span>;
-  return <span className="badge badge-stock">Restocked</span>;
+  if (status === "LOW_STOCK")   return <span className="badge badge-warning">Low Stock</span>;
+  if (status === "OUT_OF_STOCK") return <span className="badge badge-danger">Out of Stock</span>;
+  return <span className="badge badge-success">Restocked</span>;
 }
 
 function timeAgo(iso: string) {
@@ -52,25 +50,27 @@ function AddItemModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =
   };
 
   return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
-        <div className="modal-handle" />
-        <h2 className="modal-title">Report Shortage</h2>
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content">
+        <h2 style={{ marginBottom: '1.5rem' }}>Report Shortage</h2>
         <form onSubmit={submit}>
-          <div className="form-group">
-            <label className="form-label">Item Name</label>
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label className="ledger-amount-label">Item Name</label>
             <input id="item-name" className="form-input" placeholder="e.g. Indomie Noodles" value={itemName} onChange={e => setItemName(e.target.value)} required />
           </div>
-          <div className="form-group">
-            <label className="form-label">Status</label>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label className="ledger-amount-label">Status</label>
             <select id="item-status" className="form-select" value={status} onChange={e => setStatus(e.target.value as "LOW_STOCK" | "OUT_OF_STOCK")}>
               <option value="LOW_STOCK">Low Stock</option>
               <option value="OUT_OF_STOCK">Out of Stock</option>
             </select>
           </div>
-          <button id="item-submit" className="btn btn-primary btn-full" type="submit" disabled={loading}>
-            {loading ? "Saving…" : "Report Item"}
-          </button>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button className="btn btn-ghost" style={{ flex: 1 }} type="button" onClick={onClose}>Cancel</button>
+            <button id="item-submit" className="btn btn-primary" style={{ flex: 2 }} type="submit" disabled={loading}>
+              {loading ? "Saving…" : "Report Item"}
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -95,28 +95,32 @@ function UpdateModal({ item, onClose, onSaved }: { item: InventoryItem; onClose:
   };
 
   return (
-    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
-        <div className="modal-handle" />
-        <h2 className="modal-title">Update Status</h2>
-        <p style={{ color: "var(--text-secondary)", marginBottom: "1.25rem", fontWeight: 600 }}>{item.itemName}</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.25rem" }}>
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content">
+        <h2 style={{ marginBottom: '0.5rem' }}>Update Status</h2>
+        <p style={{ color: "var(--text-muted)", marginBottom: "1.5rem" }}>{item.itemName}</p>
+        
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
           {(["LOW_STOCK", "OUT_OF_STOCK", "RESTOCKED"] as StockStatus[]).map(s => (
             <button
               key={s}
               id={`status-${s.toLowerCase()}`}
               className={`btn ${status === s ? "btn-primary" : "btn-ghost"}`}
-              style={{ justifyContent: "flex-start", gap: "0.75rem" }}
+              style={{ justifyContent: "flex-start", gap: "1rem", padding: '1rem' }}
               onClick={() => setStatus(s)}
             >
-              <span>{s === "LOW_STOCK" ? "⚡" : s === "OUT_OF_STOCK" ? "🔴" : "✅"}</span>
+              <span style={{ fontSize: '1.2rem' }}>{s === "LOW_STOCK" ? "⚡" : s === "OUT_OF_STOCK" ? "🔴" : "✅"}</span>
               {s === "LOW_STOCK" ? "Low Stock" : s === "OUT_OF_STOCK" ? "Out of Stock" : "Restocked"}
             </button>
           ))}
         </div>
-        <button id="status-confirm" className="btn btn-primary btn-full" onClick={submit} disabled={loading}>
-          {loading ? "Saving…" : "Update Status"}
-        </button>
+
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+          <button id="status-confirm" className="btn btn-primary" style={{ flex: 2 }} onClick={submit} disabled={loading}>
+            {loading ? "Saving…" : "Update Status"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -124,7 +128,6 @@ function UpdateModal({ item, onClose, onSaved }: { item: InventoryItem; onClose:
 
 // ─── Inventory Page ──────────────────────────────────────────────────────────
 export default function InventoryPage() {
-  const pathname = usePathname();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
@@ -147,54 +150,64 @@ export default function InventoryPage() {
   return (
     <>
       <main className="page">
-        <div className="page-header">
+        <header className="page-header">
           <div>
             <h1>Inventory</h1>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.8rem", marginTop: 2 }}>Stock shortages</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>Monitor stock shortages and replenishment</p>
           </div>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowAll(v => !v)}>
-            {showAll ? "Active only" : "Show all"}
+            {showAll ? "Active shortages" : "View all items"}
           </button>
-        </div>
+        </header>
 
-        <div className="stat-row">
-          <div className="stat-pill">
-            <div className="label">Out</div>
-            <div className="value" style={{ color: "var(--danger)" }}>{outCount}</div>
+        <section className="stat-grid">
+          <div className="stat-card">
+            <div className="label">Out of Stock</div>
+            <div className="value text-danger">{outCount}</div>
           </div>
-          <div className="stat-pill">
-            <div className="label">Low</div>
-            <div className="value" style={{ color: "var(--warning)" }}>{lowCount}</div>
+          <div className="stat-card">
+            <div className="label">Low Stock</div>
+            <div className="value text-warning">{lowCount}</div>
           </div>
-          <div className="stat-pill">
+          <div className="stat-card">
             <div className="label">Restocked</div>
-            <div className="value" style={{ color: "var(--success)" }}>{stockCount}</div>
+            <div className="value text-success">{stockCount}</div>
           </div>
-        </div>
+        </section>
 
         {loading ? (
-          Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton skeleton-card" />)
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {[1,2,3,4].map(i => <div key={i} className="card" style={{ height: '80px', opacity: 0.5 }}>Loading...</div>)}
+          </div>
         ) : items.length === 0 ? (
-          <div className="empty-state">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-            <h3>All clear!</h3>
-            <p style={{ fontSize: "0.85rem" }}>No shortages to report</p>
+          <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'white', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
+            <h3>Inventory looks good!</h3>
+            <p style={{ color: 'var(--text-muted)' }}>No stock shortages reported at the moment.</p>
           </div>
         ) : (
-          <div className="entry-list">
+          <div className="ledger-container">
+             <div className="ledger-header">
+              <div>Item Name</div>
+              <div>Status</div>
+              <div>Reporter</div>
+            </div>
             {items.map(item => (
               <div
                 key={item.id}
-                className="entry-card"
+                className="ledger-row"
                 onClick={() => setSelected(item)}
-                style={{ opacity: item.status === "RESTOCKED" ? 0.55 : 1 }}
+                style={{ opacity: item.status === "RESTOCKED" ? 0.6 : 1 }}
               >
-                <div className="entry-card-top">
-                  <span className="entry-name">{item.itemName}</span>
+                <div>
+                  <div className="ledger-name">{item.itemName}</div>
+                  <div className="ledger-meta">{timeAgo(item.createdAt)}</div>
+                </div>
+                <div>
                   <StatusBadge status={item.status} />
                 </div>
-                <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 4 }}>
-                  By {item.reporterName} • {timeAgo(item.createdAt)} · tap to update
+                <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", textAlign: 'right' }}>
+                  {item.reporterName}
                 </div>
               </div>
             ))}
@@ -202,31 +215,12 @@ export default function InventoryPage() {
         )}
       </main>
 
-      <button id="inventory-fab" className="fab" onClick={() => setShowAdd(true)} aria-label="Report shortage">+</button>
+      <button id="inventory-fab" className="fab" onClick={() => setShowAdd(true)} aria-label="Report shortage">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} style={{ width: 28, height: 28 }}><path d="M12 5v14M5 12h14"/></svg>
+      </button>
 
       {showAdd && <AddItemModal onClose={() => setShowAdd(false)} onSaved={load} />}
       {selected && <UpdateModal item={selected} onClose={() => setSelected(null)} onSaved={load} />}
-
-      <BottomNav pathname={pathname} />
     </>
-  );
-}
-
-function BottomNav({ pathname }: { pathname: string }) {
-  return (
-    <nav className="bottom-nav">
-      <Link href="/ledger"    className={`nav-item ${pathname === "/ledger"    ? "active" : ""}`}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        Ledger
-      </Link>
-      <Link href="/inventory" className={`nav-item ${pathname === "/inventory" ? "active" : ""}`}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-        Inventory
-      </Link>
-      <Link href="/profile"   className={`nav-item ${pathname === "/profile"   ? "active" : ""}`}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Profile
-      </Link>
-    </nav>
   );
 }

@@ -8,181 +8,75 @@ export default function SignUpPage() {
   const [state, formAction, isPending] = useActionState(signUpWithEmail, null);
 
   return (
-    <div className="auth-layout">
+    <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-header">
-          <div className="logo-badge">SS</div>
-          <h1>Join ShopSync</h1>
-          <p>Create an account for your staff</p>
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <div className="auth-logo">SS</div>
+          <h1 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>Join ShopSync</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>Create a staff account to start tracking records</p>
         </div>
 
-        <form action={formAction} className="auth-form">
-          <div className="form-group">
-            <label htmlFor="name">Full Name</label>
+        <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+          <div>
+            <label className="ledger-amount-label" htmlFor="name">Full Name</label>
             <input
               id="name"
               name="name"
               type="text"
-              placeholder="John Doe"
+              className="form-input"
+              placeholder="e.g. John Staff"
               required
               disabled={isPending}
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
+          <div>
+            <label className="ledger-amount-label" htmlFor="email">Email Address</label>
             <input
               id="email"
               name="email"
               type="email"
+              className="form-input"
               placeholder="name@company.com"
               required
               disabled={isPending}
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
+          <div>
+            <label className="ledger-amount-label" htmlFor="password">Create Password</label>
             <input
               id="password"
               name="password"
               type="password"
+              className="form-input"
               placeholder="••••••••"
               required
               disabled={isPending}
             />
           </div>
 
-          {state?.error && <div className="error-message">{state.error}</div>}
+          {state?.error && (
+            <div style={{ 
+              padding: '0.75rem', background: '#FFF5F5', color: 'var(--danger)', 
+              borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid #FED7D7'
+            }}>
+              {state.error}
+            </div>
+          )}
 
-          <button type="submit" className="btn btn-primary btn-block" disabled={isPending}>
-            {isPending ? "Creating account..." : "Sign Up"}
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }} disabled={isPending}>
+            {isPending ? "Creating account..." : "Create Account"}
           </button>
         </form>
 
-        <div className="auth-footer">
-          <p>
-            Already have an account? <Link href="/auth/sign-in">Sign in</Link>
-          </p>
+        <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+          Already have an account?{" "}
+          <Link href="/auth/sign-in" style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'none' }}>
+            Sign In
+          </Link>
         </div>
       </div>
-
-      <style jsx>{`
-        .auth-layout {
-          min-height: 100dvh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: var(--bg);
-          padding: 1.5rem;
-        }
-
-        .auth-card {
-          background: var(--card-bg);
-          border: 1px solid var(--border);
-          border-radius: var(--radius-lg);
-          padding: 2.5rem 2rem;
-          width: 100%;
-          max-width: 400px;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-        }
-
-        .auth-header {
-          text-align: center;
-          margin-bottom: 2rem;
-        }
-
-        .logo-badge {
-          width: 48px;
-          height: 48px;
-          background: var(--primary);
-          color: white;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: bold;
-          font-size: 1.25rem;
-          margin: 0 auto 1rem;
-        }
-
-        .auth-header h1 {
-          font-size: 1.75rem;
-          font-weight: 700;
-          color: var(--text-primary);
-          margin-bottom: 0.25rem;
-        }
-
-        .auth-header p {
-          color: var(--text-muted);
-          font-size: 0.875rem;
-        }
-
-        .auth-form {
-          display: flex;
-          flex-direction: column;
-          gap: 1.15rem;
-        }
-
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.4rem;
-        }
-
-        .form-group label {
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: var(--text-secondary);
-        }
-
-        .form-group input {
-          background: var(--bg);
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          padding: 0.7rem;
-          color: var(--text-primary);
-          font-size: 1rem;
-        }
-
-        .form-group input:focus {
-          outline: none;
-          border-color: var(--primary);
-        }
-
-        .error-message {
-          background: rgba(220, 38, 38, 0.1);
-          color: #ef4444;
-          padding: 0.75rem;
-          border-radius: 8px;
-          font-size: 0.875rem;
-          text-align: center;
-        }
-
-        .btn-block {
-          width: 100%;
-          padding: 0.875rem;
-          font-weight: 600;
-          margin-top: 0.5rem;
-        }
-
-        .auth-footer {
-          margin-top: 1.5rem;
-          text-align: center;
-          font-size: 0.875rem;
-          color: var(--text-muted);
-        }
-
-        .auth-footer a {
-          color: var(--primary);
-          font-weight: 500;
-          text-decoration: none;
-        }
-
-        .auth-footer a:hover {
-          text-decoration: underline;
-        }
-      `}</style>
     </div>
   );
 }

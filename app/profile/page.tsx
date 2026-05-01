@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 interface UserInfo {
   id: string;
@@ -49,7 +48,6 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export default function ProfilePage() {
-  const pathname = usePathname();
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [pushStatus, setPushStatus] = useState<"idle" | "loading" | "granted" | "denied">("idle");
@@ -85,103 +83,89 @@ export default function ProfilePage() {
 
   return (
     <>
-      {toast && (
-        <div className="toast-wrap">
-          <div className="toast">{toast}</div>
-        </div>
-      )}
-
       <main className="page">
-        <div className="page-header">
+        <header className="page-header">
           <h1>Profile</h1>
-        </div>
+        </header>
 
         {loading ? (
-          <>
-            <div className="skeleton" style={{ width: 64, height: 64, borderRadius: "50%", marginBottom: 12 }} />
-            <div className="skeleton" style={{ width: 160, height: 20, marginBottom: 8 }} />
-            <div className="skeleton" style={{ width: 200, height: 16 }} />
-          </>
+          <div className="card">Loading profile...</div>
         ) : user ? (
-          <>
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
-              <div className="avatar">
-                {user.image ? <img src={user.image} alt={user.name ?? "avatar"} /> : initials}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', background: 'var(--primary)', color: 'white' }}>
+              <div style={{ 
+                width: 80, height: 80, borderRadius: '50%', background: 'white', color: 'var(--primary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 800,
+                boxShadow: 'var(--shadow-lg)'
+              }}>
+                {user.image ? <img src={user.image} alt={user.name ?? "avatar"} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : initials}
               </div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: "1.1rem" }}>{user.name ?? "Staff"}</div>
-                <div style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>{user.email}</div>
-                <div style={{ marginTop: 4 }}>
-                  <span className={`badge ${user.role === "admin" ? "badge-purple" : "badge-low"}`}>
-                    {user.role === "admin" ? "👑 Admin" : "Staff"}
-                  </span>
-                </div>
+                <h2 style={{ color: 'white', marginBottom: '0.25rem' }}>{user.name ?? "Shop Staff"}</h2>
+                <p style={{ opacity: 0.8, marginBottom: '0.75rem' }}>{user.email}</p>
+                <span className="badge" style={{ background: 'rgba(255,255,255,0.2)', color: 'white' }}>
+                  {user.role === "admin" ? "👑 Admin" : "Staff Member"}
+                </span>
               </div>
             </div>
 
-            <div className="divider" />
-
-            {/* Push Notifications */}
-            <div className="card" style={{ marginBottom: "0.75rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div className="card">
+              <h3 style={{ marginBottom: '1.25rem' }}>Notifications</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontWeight: 600, marginBottom: 2 }}>Push Notifications</div>
-                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                    {pushStatus === "granted" ? "Enabled — you'll be notified of new debts & stock alerts" : "Get alerts for new debt entries and out-of-stock items"}
-                  </div>
+                  <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Push Alerts</div>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Get real-time alerts for new debts and stock issues.
+                  </p>
                 </div>
                 {pushStatus === "granted" ? (
-                  <span className="badge badge-stock">ON</span>
+                  <span className="badge badge-success">Enabled</span>
                 ) : pushStatus === "denied" ? (
-                  <span className="badge badge-out">Blocked</span>
+                  <span className="badge badge-danger">Blocked</span>
                 ) : (
                   <button id="enable-push" className="btn btn-primary btn-sm" onClick={handlePush} disabled={pushStatus === "loading"}>
-                    {pushStatus === "loading" ? "…" : "Enable"}
+                    {pushStatus === "loading" ? "Activating..." : "Enable"}
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Quick links */}
-            <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "0.75rem" }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>Quick Actions</div>
-              <Link href="/ledger" className="btn btn-ghost" style={{ justifyContent: "flex-start" }}>📒 Go to Ledger</Link>
-              <Link href="/inventory" className="btn btn-ghost" style={{ justifyContent: "flex-start" }}>📦 Go to Inventory</Link>
+            <div className="card">
+              <h3 style={{ marginBottom: '1.25rem' }}>Account Actions</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <Link href="/ledger" className="btn btn-ghost" style={{ justifyContent: 'flex-start' }}>
+                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ width: 20, height: 20 }}><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  View Debt Ledger
+                </Link>
+                <Link href="/inventory" className="btn btn-ghost" style={{ justifyContent: 'flex-start' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ width: 20, height: 20 }}><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                  Check Inventory
+                </Link>
+                <div style={{ height: '1px', background: 'var(--border)', margin: '0.5rem 0' }}></div>
+                <a href="/api/auth/signout" className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--danger)', borderColor: 'rgba(197, 48, 48, 0.2)' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ width: 20, height: 20 }}><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4m7 14l5-5-5-5m5 5H9"/></svg>
+                  Sign Out of ShopSync
+                </a>
+              </div>
             </div>
-
-            <div className="divider" />
-
-            <a href="/api/auth/signout" id="sign-out" className="btn btn-danger btn-full">Sign Out</a>
-          </>
+          </div>
         ) : (
-          <div className="empty-state">
-            <h3>Not signed in</h3>
-            <p style={{ fontSize: "0.85rem" }}>Please sign in to use ShopSync</p>
-            <a href="/api/auth/signin" className="btn btn-primary" style={{ marginTop: "1rem" }}>Sign In</a>
+          <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+            <h3>You are not signed in</h3>
+            <Link href="/auth/sign-in" className="btn btn-primary" style={{ marginTop: '1rem' }}>Sign In</Link>
           </div>
         )}
       </main>
 
-      <BottomNav pathname={pathname} />
+      {toast && (
+        <div style={{ 
+          position: 'fixed', bottom: 'calc(var(--nav-h) + 20px)', left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--primary)', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '100px',
+          boxShadow: 'var(--shadow-lg)', z-index: 200, fontWeight: 600, fontSize: '0.9rem'
+        }}>
+          {toast}
+        </div>
+      )}
     </>
-  );
-}
-
-function BottomNav({ pathname }: { pathname: string }) {
-  return (
-    <nav className="bottom-nav">
-      <Link href="/ledger"    className={`nav-item ${pathname === "/ledger"    ? "active" : ""}`}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        Ledger
-      </Link>
-      <Link href="/inventory" className={`nav-item ${pathname === "/inventory" ? "active" : ""}`}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-        Inventory
-      </Link>
-      <Link href="/profile"   className={`nav-item ${pathname === "/profile"   ? "active" : ""}`}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Profile
-      </Link>
-    </nav>
   );
 }
