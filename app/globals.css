@@ -426,3 +426,15 @@ h3 { font-size: 1.1rem;    font-weight: 600; color: var(--text-primary); }
 .text-success { color: var(--success); }
 .text-warning { color: var(--warning); }
 .text-number { color: var(--text-number); font-weight: 700; }
+
+.toast {
+  position: fixed; bottom: calc(var(--nav-h) + 20px); left: 50%; transform: translateX(-50%);
+  background: var(--primary); color: white; padding: 0.75rem 1.5rem; border-radius: 100px;
+  box-shadow: var(--shadow-lg); z-index: 200; font-weight: 600; font-size: 0.9rem;
+  animation: toast-slide-in 0.3s ease-out;
+}
+
+@keyframes toast-slide-in {
+  from { transform: translateY(20px) translateX(-50%); opacity: 0; }
+  to { transform: translateY(0) translateX(-50%); opacity: 1; }
+}

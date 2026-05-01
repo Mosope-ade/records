@@ -158,11 +158,7 @@ export default function ProfilePage() {
       </main>
 
       {toast && (
-        <div style={{ 
-          position: 'fixed', bottom: 'calc(var(--nav-h) + 20px)', left: '50%', transform: 'translateX(-50%)',
-          background: 'var(--primary)', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '100px',
-          boxShadow: 'var(--shadow-lg)', z-index: 200, fontWeight: 600, fontSize: '0.9rem'
-        }}>
+        <div className="toast">
           {toast}
         </div>
       )}
