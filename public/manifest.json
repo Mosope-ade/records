@@ -2,7 +2,7 @@
   "name": "ShopSync",
   "short_name": "ShopSync",
   "description": "Real-time shop debt ledger & inventory tracker",
-  "start_url": "/ledger",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0f0f1a",
   "theme_color": "#7c3aed",

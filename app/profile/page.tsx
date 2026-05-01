@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { signOut } from "@/lib/components/action";
 
 interface UserInfo {
   id: string;
@@ -11,16 +12,18 @@ interface UserInfo {
   role: "admin" | "staff";
 }
 
+
+
 async function subscribeToPush() {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+  // console.log("Checking for SW support...")
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    // console.warn("Push notifications not supported")
+    return false;
+  }
 
+  console.log("Waiting for service worker ready...")
   const reg = await navigator.serviceWorker.ready;
-
-  // Fetch VAPID public key
-  const res = await fetch("/api/push/subscribe");
-  const { publicKey } = await res.json();
-  if (!publicKey) return false;
-
+  console.log("Service worker is ready:", reg);
   // Request permission
   const perm = await Notification.requestPermission();
   if (perm !== "granted") return false;
@@ -28,14 +31,24 @@ async function subscribeToPush() {
   // Subscribe
   const sub = await reg.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(publicKey),
+    applicationServerKey: urlBase64ToUint8Array(
+      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
+    ),
   });
 
-  await fetch("/api/push/subscribe", {
+  console.log("Sending subscription to server...")
+  const pushRes = await fetch("/api/push/subscribe", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(sub.toJSON()),
+    body: JSON.stringify({ subscription: sub }),
   });
+
+  if (!pushRes.ok) {
+    console.error("Failed to save subscription on server", await pushRes.text());
+    return false;
+  }
+
+  console.log("Successfully subscribed!");
 
   return true;
 }
@@ -53,11 +66,23 @@ export default function ProfilePage() {
   const [pushStatus, setPushStatus] = useState<"idle" | "loading" | "granted" | "denied">("idle");
   const [toast, setToast] = useState<string | null>(null);
 
+  async function registerServiceWorker() {
+    const registration = await navigator.serviceWorker.register('/sw.js', {
+      scope: '/',
+      updateViaCache: 'none',
+    })
+    const sub = await registration.pushManager.getSubscription()
+  }
+
   useEffect(() => {
     fetch("/api/me")
       .then(r => r.ok ? r.json() : null)
       .then(setUser)
       .finally(() => setLoading(false));
+
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+    registerServiceWorker()
+    }
 
     if ("Notification" in window) {
       if (Notification.permission === "granted") setPushStatus("granted");
@@ -71,10 +96,16 @@ export default function ProfilePage() {
   };
 
   const handlePush = async () => {
+    try {
     setPushStatus("loading");
     const ok = await subscribeToPush();
     setPushStatus(ok ? "granted" : "denied");
     showToast(ok ? "🔔 Push notifications enabled!" : "❌ Push permission denied");
+    } catch (error) {
+      console.error(error);
+      setPushStatus("idle");
+      showToast((error as Error).message);
+    }
   };
 
   const initials = user?.name
@@ -123,7 +154,9 @@ export default function ProfilePage() {
                 ) : pushStatus === "denied" ? (
                   <span className="badge badge-danger">Blocked</span>
                 ) : (
-                  <button id="enable-push" className="btn btn-primary btn-sm" onClick={handlePush} disabled={pushStatus === "loading"}>
+                  <button id="enable-push" className="btn btn-primary btn-sm" onClick={handlePush}
+                  //  disabled={pushStatus === "loading"}
+                   >
                     {pushStatus === "loading" ? "Activating..." : "Enable"}
                   </button>
                 )}
@@ -142,10 +175,10 @@ export default function ProfilePage() {
                   Check Inventory
                 </Link>
                 <div style={{ height: '1px', background: 'var(--border)', margin: '0.5rem 0' }}></div>
-                <a href="/api/auth/signout" className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--danger)', borderColor: 'rgba(197, 48, 48, 0.2)' }}>
+                <span onClick={signOut} className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--danger)', borderColor: 'rgba(197, 48, 48, 0.2)' }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ width: 20, height: 20 }}><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4m7 14l5-5-5-5m5 5H9"/></svg>
                   Sign Out of ShopSync
-                </a>
+                </span>
               </div>
             </div>
           </div>

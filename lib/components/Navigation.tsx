@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "./action";
 
 const NAV_ITEMS = [
   { href: "/ledger", label: "Ledger", icon: (
@@ -58,12 +59,12 @@ export function Navigation() {
         </nav>
         
         <div style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem' }}>
-          <a href="/api/auth/signout" className="sidebar-item" style={{ color: '#FC8181' }}>
+          <span onClick={signOut} className="sidebar-item" style={{ color: '#FC8181' }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ width: 20, height: 20 }}>
               <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4m7 14l5-5-5-5m5 5H9"/>
             </svg>
             Sign Out
-          </a>
+          </span>
         </div>
       </aside>
     </>
