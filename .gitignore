@@ -40,4 +40,15 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# prisma generated client
 /app/generated/prisma
+
+# cache
+.cache/
+
+# npm lockfile (project uses pnpm — avoid committing both lockfiles)
+package-lock.json
+
+# claude code
+.agents/
+skills-lock.json

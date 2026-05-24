@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { fmt, timeAgo } from "@/lib/utils";
 
 interface DebtEntry {
   id: string;
@@ -23,50 +24,128 @@ interface Payment {
   paidAt: string;
 }
 
-function fmt(n: string | number) {
-  return `₦${Number(n).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
-}
-
-function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return new Date(iso).toLocaleDateString("en-NG", { day: "2-digit", month: "short" });
-}
-
 // ─── Add Debt Modal ──────────────────────────────────────────────────────────
 function AddDebtModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [name, setName] = useState("");
   const [total, setTotal] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Suggestions state
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggest, setShowSuggest] = useState(false);
+  const suggestRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!name.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/suggest?type=customers&q=${encodeURIComponent(name)}`);
+        if (res.ok) {
+          setSuggestions(await res.json());
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [name]);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (suggestRef.current && !suggestRef.current.contains(e.target as Node)) {
+        setShowSuggest(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!name.trim() || !total) return;
     setLoading(true);
-    await fetch("/api/debt", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ customerName: name.trim(), totalDebt: parseFloat(total), notes }),
-    });
-    setLoading(false);
-    onSaved();
-    onClose();
+    setError(null);
+    try {
+      const res = await fetch("/api/debt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerName: name.trim(), totalDebt: parseFloat(total), notes }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to save debt entry");
+      }
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      setError(err.message || "An error occurred");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-content">
         <h2 style={{ marginBottom: '1.5rem' }}>New Debt Entry</h2>
-        <form onSubmit={submit}>
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label className="ledger-amount-label">Customer Name</label>
-            <input id="debt-name" className="form-input" placeholder="e.g. Iya Shola" value={name} onChange={e => setName(e.target.value)} required />
+        {error && (
+          <div style={{ padding: "0.75rem", background: "#FFF5F5", color: "var(--danger)", borderRadius: "8px", fontSize: "0.85rem", fontWeight: 600, border: "1px solid #FED7D7", marginBottom: "1rem" }}>
+            {error}
           </div>
+        )}
+        <form onSubmit={submit}>
+          
+          {/* Autocomplete Input */}
+          <div style={{ marginBottom: '1.25rem', position: "relative" }} ref={suggestRef}>
+            <label className="ledger-amount-label">Customer Name</label>
+            <input
+              id="debt-name"
+              className="form-input"
+              placeholder="e.g. Iya Shola"
+              value={name}
+              onChange={e => {
+                setName(e.target.value);
+                setShowSuggest(true);
+              }}
+              onFocus={() => setShowSuggest(true)}
+              required
+              autoComplete="off"
+            />
+            {showSuggest && suggestions.length > 0 && (
+              <div style={{
+                position: "absolute", top: "100%", left: 0, right: 0,
+                background: "white", border: "1px solid var(--border)",
+                borderRadius: "8px", marginTop: "4px", zIndex: 10,
+                boxShadow: "var(--shadow-lg)", overflow: "hidden"
+              }}>
+                {suggestions.map((s, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      setName(s);
+                      setShowSuggest(false);
+                    }}
+                    style={{
+                      padding: "0.85rem 1rem", borderBottom: "1px solid var(--border)",
+                      cursor: "pointer", fontSize: "0.9rem", fontWeight: 500
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = "var(--primary-soft)"}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                  >
+                    👤 {s}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div style={{ marginBottom: '1.25rem' }}>
             <label className="ledger-amount-label">Total Debt (₦)</label>
             <input id="debt-amount" className="form-input" type="number" min="0" step="0.01" placeholder="5000.00" value={total} onChange={e => setTotal(e.target.value)} required />
@@ -92,28 +171,42 @@ function PayModal({ entry, onClose, onSaved }: { entry: DebtEntry; onClose: () =
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!amount) return;
     setLoading(true);
-    await fetch(`/api/debt/${entry.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: parseFloat(amount), note }),
-    });
-    setLoading(false);
-    onSaved();
-    onClose();
+    setError(null);
+    try {
+      const res = await fetch(`/api/debt/${entry.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: parseFloat(amount), note }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to record payment");
+      }
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      setError(err.message || "An error occurred");
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const pct = Math.min(100, (Number(entry.amountPaid) / Number(entry.totalDebt)) * 100);
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-content">
         <h2 style={{ marginBottom: '0.5rem' }}>Record Payment</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>{entry.customerName}</p>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>{entry.customerName}</p>
+        {error && (
+          <div style={{ padding: "0.75rem", background: "#FFF5F5", color: "var(--danger)", borderRadius: "8px", fontSize: "0.85rem", fontWeight: 600, border: "1px solid #FED7D7", marginBottom: "1rem" }}>
+            {error}
+          </div>
+        )}
         
         <div className="card" style={{ marginBottom: "1.5rem", background: 'var(--primary-soft)', border: 'none' }}>
           <div className="ledger-amounts">
@@ -172,7 +265,12 @@ export default function LedgerPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [selected, setSelected] = useState<DebtEntry | null>(null);
 
-  const load = async () => {
+  // Suggestions state
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggest, setShowSuggest] = useState(false);
+  const suggestRef = useRef<HTMLDivElement>(null);
+
+  const load = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (search) params.set("name", search);
@@ -180,9 +278,39 @@ export default function LedgerPage() {
     const res = await fetch(`/api/debt?${params}`);
     if (res.ok) setEntries(await res.json());
     setLoading(false);
-  };
+  }, [search, date]);
 
-  useEffect(() => { load(); }, [search, date]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!search.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/suggest?type=customers&q=${encodeURIComponent(search)}`);
+        if (res.ok) {
+          setSuggestions(await res.json());
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (suggestRef.current && !suggestRef.current.contains(e.target as Node)) {
+        setShowSuggest(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const totalBalance = entries.reduce((s, e) => s + Number(e.balance), 0);
   const outstanding  = entries.filter(e => Number(e.balance) > 0).length;
@@ -197,7 +325,7 @@ export default function LedgerPage() {
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase" }}>Total Outstanding</div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--danger)" }}>{fmt(totalBalance)}</div>
+            <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--danger)" }}>{fmt(totalBalance)}</div>
           </div>
         </header>
 
@@ -217,17 +345,53 @@ export default function LedgerPage() {
         </section>
 
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-          <div style={{ flex: 2, position: 'relative', minWidth: '200px' }}>
-            <input 
-              id="ledger-search" 
-              className="form-input" 
-              placeholder="Search by customer name..." 
-              value={search} 
-              onChange={e => setSearch(e.target.value)}
-              style={{ paddingLeft: '2.5rem' }}
-            />
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', width: '1.2rem', color: 'var(--text-muted)' }}><circle cx={11} cy={11} r={8}/><path d="m21 21-4.35-4.35"/></svg>
+          
+          {/* Autocomplete Input Search */}
+          <div style={{ flex: 2, position: 'relative', minWidth: '200px' }} ref={suggestRef}>
+            <div style={{ position: "relative" }}>
+              <input 
+                id="ledger-search" 
+                className="form-input" 
+                placeholder="Search by customer name..." 
+                value={search} 
+                onChange={e => {
+                  setSearch(e.target.value);
+                  setShowSuggest(true);
+                }}
+                onFocus={() => setShowSuggest(true)}
+                style={{ paddingLeft: '2.5rem' }}
+                autoComplete="off"
+              />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', width: '1.2rem', color: 'var(--text-muted)' }}><circle cx={11} cy={11} r={8}/><path d="m21 21-4.35-4.35"/></svg>
+            </div>
+            {showSuggest && suggestions.length > 0 && (
+              <div style={{
+                position: "absolute", top: "100%", left: 0, right: 0,
+                background: "white", border: "1px solid var(--border)",
+                borderRadius: "8px", marginTop: "4px", zIndex: 10,
+                boxShadow: "var(--shadow-lg)", overflow: "hidden"
+              }}>
+                {suggestions.map((s, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      setSearch(s);
+                      setShowSuggest(false);
+                    }}
+                    style={{
+                      padding: "0.85rem 1rem", borderBottom: "1px solid var(--border)",
+                      cursor: "pointer", fontSize: "0.9rem", fontWeight: 500
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = "var(--primary-soft)"}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                  >
+                    👤 {s}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
           <input 
             id="ledger-date" 
             type="date" 
@@ -250,31 +414,44 @@ export default function LedgerPage() {
             <p style={{ color: 'var(--text-muted)' }}>Tap the + button to record a new debt.</p>
           </div>
         ) : (
-          <div className="ledger-container">
-            <div className="ledger-header">
-              <div>Customer</div>
-              <div>Debt Status</div>
-              <div>Action</div>
-            </div>
+          /* Mobile-first cards list for Ledger */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {entries.map(e => (
-              <div key={e.id} className="ledger-row" onClick={() => setSelected(e)}>
-                <div>
-                  <div className="ledger-name">{e.customerName}</div>
-                  <div className="ledger-meta">{e.creatorName} • {timeAgo(e.createdAt)}</div>
-                </div>
-                <div className="ledger-amounts">
-                  <div className="ledger-amount-group">
-                    <div className="ledger-amount-label">Debt</div>
-                    <div className="ledger-amount-value">{fmt(e.totalDebt)}</div>
+              <div key={e.id} className="card" onClick={() => setSelected(e)} style={{
+                display: "flex", flexDirection: "column", gap: "0.85rem",
+                padding: "1.25rem", borderRadius: "12px", border: "1px solid var(--border)",
+                cursor: "pointer"
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <div className="ledger-name">{e.customerName}</div>
+                    <div className="ledger-meta">{e.creatorName} • {timeAgo(e.createdAt)}</div>
                   </div>
-                  <div className="ledger-amount-group">
-                    <div className="ledger-amount-label">Balance</div>
-                    <div className="ledger-amount-value" style={{ color: Number(e.balance) > 0 ? 'var(--danger)' : 'var(--success)' }}>{fmt(e.balance)}</div>
+                  <div>
+                    <span className={`badge ${Number(e.balance) > 0 ? "badge-danger" : "badge-success"}`} style={{ fontSize: '0.65rem' }}>
+                      {Number(e.balance) > 0 ? "Outstanding" : "Cleared"}
+                    </span>
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <button className="btn btn-primary btn-sm" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
-                    {Number(e.balance) > 0 ? "Record Pay" : "View Details"}
+
+                <div style={{
+                  display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem",
+                  padding: "0.6rem 0.85rem", background: "var(--primary-soft)",
+                  borderRadius: "8px"
+                }}>
+                  <div>
+                    <span className="ledger-amount-label">Debt</span>
+                    <div style={{ fontWeight: 800 }}>{fmt(e.totalDebt)}</div>
+                  </div>
+                  <div>
+                    <span className="ledger-amount-label">Balance</span>
+                    <div style={{ fontWeight: 800, color: Number(e.balance) > 0 ? 'var(--danger)' : 'var(--success)' }}>{fmt(e.balance)}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button className="btn btn-ghost btn-sm" style={{ padding: '0.4rem 1rem', fontSize: '0.8rem' }}>
+                    {Number(e.balance) > 0 ? "Record Payment" : "View Payments"}
                   </button>
                 </div>
               </div>

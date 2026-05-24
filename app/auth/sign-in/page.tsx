@@ -57,12 +57,6 @@ export default function SignInPage() {
           </button>
         </form>
 
-        <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-          Don&apos;t have an account?{" "}
-          <Link href="/auth/sign-up" style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'none' }}>
-            Request Access
-          </Link>
-        </div>
       </div>
     </div>
   );

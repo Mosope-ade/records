@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@/app/generated/prisma/client";
 import { getCurrentUser } from "@/lib/auth/server";
+import { sendPushNotification } from "@/lib/push";
 
 // PATCH /api/debt/[id] — record a payment
 export async function PATCH(
@@ -23,10 +25,11 @@ export async function PATCH(
     const debt = await tx.debtEntry.findUnique({ where: { id } });
     if (!debt) throw new Error("Debt entry not found");
 
-    const newAmountPaid = Number(debt.amountPaid) + amount;
-    const newBalance = Number(debt.totalDebt) - newAmountPaid;
+    const paymentDecimal = new Prisma.Decimal(amount);
+    const newAmountPaid = debt.amountPaid.plus(paymentDecimal);
+    const newBalance = debt.totalDebt.minus(newAmountPaid);
 
-    if (newBalance < 0) throw new Error("Payment exceeds remaining balance");
+    if (newBalance.lt(0)) throw new Error("Payment exceeds remaining balance");
 
     // 1. Create payment record
     await tx.payment.create({
@@ -47,6 +50,16 @@ export async function PATCH(
       },
     });
   });
+
+  // Notify other workers about the payment update
+  await sendPushNotification(
+    {
+      title: "💵 Payment Recorded",
+      body: `${result.customerName} paid ₦${Number(amount).toLocaleString()} (Balance: ₦${Number(result.balance).toLocaleString()}).`,
+      url: "/ledger",
+    },
+    user.id
+  );
 
   return NextResponse.json(result);
 }

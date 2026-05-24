@@ -1,13 +1,26 @@
-import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth/server";
+"use client";
 
-/** Root page checks for auth and redirects accordingly */
-export default async function Home() {
-  const user = await getCurrentUser();
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth/client";
 
-  if (user) {
-    redirect("/ledger");
-  }
+export default function Home() {
+  const { data: session, isPending } = authClient.useSession();
+  const router = useRouter();
 
-  redirect("/auth/sign-in");
+  useEffect(() => {
+    if (!isPending) {
+      if (session?.user) router.replace("/ledger");
+      else router.replace("/auth/sign-in");
+    }
+  }, [session, isPending, router]);
+
+  return (
+    <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+      <div style={{ textAlign: "center", color: "var(--text-muted)" }}>
+        <div style={{ fontSize: "2rem", fontWeight: 900, color: "var(--primary)", marginBottom: "0.5rem" }}>SS</div>
+        <p>Loading…</p>
+      </div>
+    </main>
+  );
 }

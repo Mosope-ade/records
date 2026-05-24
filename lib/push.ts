@@ -7,16 +7,18 @@ export interface PushPayload {
 }
 
 /**
- * Send a push notification to all stored subscriptions for admin users.
+ * Send a push notification to all stored subscriptions, optionally excluding the triggering user.
  * Silently removes stale subscriptions (410 Gone).
  */
-export async function sendAdminPush(payload: PushPayload) {
+export async function sendPushNotification(payload: PushPayload, excludeUserId?: string) {
   if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
     console.warn("VAPID keys not configured — skipping push notification");
     return;
   }
 
-  const subs = await prisma.pushSubscription.findMany();
+  // Fetch subscriptions, optionally excluding the triggering user
+  const where = excludeUserId ? { NOT: { userId: excludeUserId } } : {};
+  const subs = await prisma.pushSubscription.findMany({ where });
   if (!subs.length) return;
 
   const { default: webpush } = await import("web-push");
@@ -43,3 +45,11 @@ export async function sendAdminPush(payload: PushPayload) {
     })
   );
 }
+
+/**
+ * Backwards compatible helper for admin-only or general updates.
+ */
+export async function sendAdminPush(payload: PushPayload) {
+  return sendPushNotification(payload);
+}
+

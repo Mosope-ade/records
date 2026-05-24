@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/server";
-import { sendAdminPush } from "@/lib/push";
+import { sendPushNotification } from "@/lib/push";
 
 // GET /api/debt — list all debt entries
 export async function GET(req: Request) {
@@ -29,9 +29,10 @@ export async function GET(req: Request) {
 
   // Fetch creator names from neon_auth.user
   const creatorIds = [...new Set(entries.map(e => e.createdBy))];
-  const creators = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT id, name FROM neon_auth.user WHERE id IN (${creatorIds.map(id => `'${id}'`).join(',')})`
-  );
+  const creators = creatorIds.length > 0
+    ? await prisma.$queryRaw<{ id: string; name: string }[]>`
+        SELECT id, name FROM neon_auth.user WHERE id = ANY(${creatorIds})`
+    : [];
   const creatorMap = Object.fromEntries(creators.map(c => [c.id, c.name]));
 
   const data = entries.map(e => ({
@@ -69,11 +70,14 @@ export async function POST(req: Request) {
     },
   });
 
-  await sendAdminPush({
-    title: "💳 New Debt Entry",
-    body: `${customerName} owes ₦${Number(totalDebt).toLocaleString()}`,
-    url: "/ledger",
-  });
+  await sendPushNotification(
+    {
+      title: "💳 New Debt Entry",
+      body: `${customerName} owes ₦${Number(totalDebt).toLocaleString()}`,
+      url: "/ledger",
+    },
+    user.id
+  );
 
   return NextResponse.json(entry, { status: 201 });
 }

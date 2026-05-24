@@ -9,26 +9,20 @@ interface UserInfo {
   email: string;
   name: string | null;
   image: string | null;
-  role: "admin" | "staff";
+  role: "admin" | "price_manager" | "staff";
 }
 
 
 
 async function subscribeToPush() {
-  // console.log("Checking for SW support...")
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    // console.warn("Push notifications not supported")
     return false;
   }
 
-  console.log("Waiting for service worker ready...")
   const reg = await navigator.serviceWorker.ready;
-  console.log("Service worker is ready:", reg);
-  // Request permission
   const perm = await Notification.requestPermission();
   if (perm !== "granted") return false;
 
-  // Subscribe
   const sub = await reg.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: urlBase64ToUint8Array(
@@ -36,7 +30,6 @@ async function subscribeToPush() {
     ),
   });
 
-  console.log("Sending subscription to server...")
   const pushRes = await fetch("/api/push/subscribe", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -48,9 +41,26 @@ async function subscribeToPush() {
     return false;
   }
 
-  console.log("Successfully subscribed!");
-
   return true;
+}
+
+async function unsubscribeFromPush() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    return false;
+  }
+
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  const endpoint = sub?.endpoint;
+  if (sub) await sub.unsubscribe();
+
+  const pushRes = await fetch("/api/push/unsubscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ endpoint }),
+  });
+
+  return pushRes.ok;
 }
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -66,14 +76,6 @@ export default function ProfilePage() {
   const [pushStatus, setPushStatus] = useState<"idle" | "loading" | "granted" | "denied">("idle");
   const [toast, setToast] = useState<string | null>(null);
 
-  async function registerServiceWorker() {
-    const registration = await navigator.serviceWorker.register('/sw.js', {
-      scope: '/',
-      updateViaCache: 'none',
-    })
-    const sub = await registration.pushManager.getSubscription()
-  }
-
   useEffect(() => {
     fetch("/api/me")
       .then(r => r.ok ? r.json() : null)
@@ -81,7 +83,10 @@ export default function ProfilePage() {
       .finally(() => setLoading(false));
 
     if ('serviceWorker' in navigator && 'PushManager' in window) {
-    registerServiceWorker()
+      navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
+        .then(reg => reg.pushManager.getSubscription())
+        .then(sub => { if (sub) setPushStatus("granted"); })
+        .catch(console.error);
     }
 
     if ("Notification" in window) {
@@ -95,15 +100,28 @@ export default function ProfilePage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handlePush = async () => {
+  const handleEnablePush = async () => {
     try {
-    setPushStatus("loading");
-    const ok = await subscribeToPush();
-    setPushStatus(ok ? "granted" : "denied");
-    showToast(ok ? "🔔 Push notifications enabled!" : "❌ Push permission denied");
+      setPushStatus("loading");
+      const ok = await subscribeToPush();
+      setPushStatus(ok ? "granted" : "idle");
+      showToast(ok ? "🔔 Push notifications enabled!" : "❌ Push permission denied");
     } catch (error) {
       console.error(error);
       setPushStatus("idle");
+      showToast((error as Error).message);
+    }
+  };
+
+  const handleDisablePush = async () => {
+    try {
+      setPushStatus("loading");
+      await unsubscribeFromPush();
+      setPushStatus("idle");
+      showToast("🔕 Push notifications disabled!");
+    } catch (error) {
+      console.error(error);
+      setPushStatus("granted");
       showToast((error as Error).message);
     }
   };
@@ -149,15 +167,17 @@ export default function ProfilePage() {
                     Get real-time alerts for new debts and stock issues.
                   </p>
                 </div>
-                {pushStatus === "granted" ? (
-                  <span className="badge badge-success">Enabled</span>
+                {pushStatus === "loading" ? (
+                  <button className="btn btn-ghost btn-sm" disabled>Updating...</button>
+                ) : pushStatus === "granted" ? (
+                  <button className="btn btn-ghost btn-sm" style={{ color: "var(--danger)", borderColor: "rgba(197, 48, 48, 0.2)" }} onClick={handleDisablePush}>
+                    Disable Alerts
+                  </button>
                 ) : pushStatus === "denied" ? (
-                  <span className="badge badge-danger">Blocked</span>
+                  <span className="badge badge-danger">Blocked (Reset in Browser)</span>
                 ) : (
-                  <button id="enable-push" className="btn btn-primary btn-sm" onClick={handlePush}
-                  //  disabled={pushStatus === "loading"}
-                   >
-                    {pushStatus === "loading" ? "Activating..." : "Enable"}
+                  <button id="enable-push" className="btn btn-primary btn-sm" onClick={handleEnablePush}>
+                    Enable Alerts
                   </button>
                 )}
               </div>

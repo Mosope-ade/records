@@ -2,7 +2,7 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../app/generated/prisma"
 }
 
@@ -56,6 +56,7 @@ model InventoryItem {
   id          String      @id @default(cuid())
   itemName    String      @map("item_name")
   status      StockStatus @default(LOW_STOCK)
+  quantity    Int         @default(0)          // stock quantity tracker
   reportedBy  String      @map("reported_by")  // neon_auth user id
   createdAt   DateTime    @map("created_at")   @default(now())
   updatedAt   DateTime    @map("updated_at")   @updatedAt
@@ -63,6 +64,23 @@ model InventoryItem {
   @@index([status])
   @@index([createdAt])
   @@map("inventory_items")
+}
+
+// ─── Products / Price List ──────────────────────────────────────────────────
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  priceUnit   Decimal  @map("price_unit") @db.Decimal(12, 2)
+  unitName    String?  @map("unit_name")  @default("pcs")       // e.g. "unit", "bottle"
+  priceBulk   Decimal  @map("price_bulk") @db.Decimal(12, 2)
+  bulkName    String?  @map("bulk_name")  @default("carton")    // e.g. "carton", "pack"
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @map("created_at") @default(now())
+  updatedAt   DateTime @map("updated_at") @updatedAt
+
+  @@index([name])
+  @@map("products")
 }
 
 // ─── Push Subscriptions ──────────────────────────────────────────────────────
@@ -78,3 +96,4 @@ model PushSubscription {
   @@index([userId])
   @@map("push_subscriptions")
 }
+
